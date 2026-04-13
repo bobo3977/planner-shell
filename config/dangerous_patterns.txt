@@ -1,0 +1,52 @@
+# Dangerous command patterns for Auditor Agent
+# Each line: regex_pattern###description
+# Lines starting with # are comments and are ignored
+# Empty lines are ignored
+
+# === File System Destruction ===
+\brm\s+.*-[rf]###Recursive force delete (rm -rf)
+\brm\s+/\s*###Delete root directory
+\brm\s+-\*###Delete with wildcard
+>\s*/dev/(sda|hda|vda|xvd)###Overwrite disk device
+dd\s+.*of=/dev/(sda|hda|vda|xvd)###DD to disk device
+>\s*/dev/(sda|hda|vda|xvd)###Redirect to disk device
+mkfs\.###Format filesystem
+fdisk\s+###Disk partitioning
+parted\s+###Disk partitioning
+
+# === System Destruction ===
+>\s*/etc/passwd###Overwrite password file
+>\s*/etc/shadow###Overwrite shadow file
+>\s*/etc/group###Overwrite group file
+>\s*/etc/sudoers###Overwrite sudoers file
+>\s*/boot/###Overwrite boot directory
+>\s*/lib/###Overwrite lib directory
+>\s*/usr/###Overwrite usr directory
+>\s*/var/###Overwrite var directory
+
+# === Dangerous Permissions ===
+chmod\s+.*777###World-writable permissions
+chmod\s+.*-R\s+.*777###Recursive world-writable
+chown\s+.*-R\s+.*:/###Recursive chown to root
+
+# === Fork Bombs and Resource Exhaustion ===
+:\(\)\{.*\}|:\(\)\{.*\};###Fork bomb pattern
+while\s+true;###Infinite loop
+for\s+.*;.*;.*do###Potential infinite loop
+
+# === Network Dangers ===
+wget\s+.*\|\s*sh###Download and execute script
+curl\s+.*\|\s*sh###Download and execute script
+wget\s+.*\|\s*bash###Download and execute bash script
+curl\s+.*\|\s*bash###Download and execute bash script
+
+# === Privilege Escalation Risks ===
+echo\s+.*>>\s*/etc/sudoers###Modify sudoers
+echo\s+.*>>\s*/etc/passwd###Modify password file
+
+# === Service Disruption ===
+systemctl\s+stop\s+.*###Stop system service
+service\s+.*\s+stop###Stop service
+killall\s+###Kill all processes
+pkill\s+###Kill processes by name
+kill\s+-9\s+###SIGKILL
