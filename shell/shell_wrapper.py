@@ -25,20 +25,17 @@ class ShellWrapper:
         self.backend = backend
         self.forward_stdin = True
         self.command_history: list[tuple[str, int, str, bool]] = []
+        self.abort_event: Optional[Any] = None
 
     def execute(self, command: str, timeout: int = 600, has_progress: bool = False, silent: bool = False) -> Tuple[int, str]:
-        """Execute command via backend.
-        
-        Args:
-            command: Shell command to execute
-            timeout: Command timeout in seconds
-            has_progress: Whether command shows progress output
-            silent: Whether to suppress output
-        
-        Returns:
-            (exit_code, output) tuple
-        """
+        """Execute command via backend."""
+        if self.abort_event and self.abort_event.is_set():
+            return 1, "Execution aborted by user."
         return self.backend.execute(command, timeout=timeout, has_progress=has_progress, silent=silent)
+
+    def interrupt(self) -> None:
+        """Interrupt the currently running command via the backend."""
+        self.backend.interrupt()
 
     def add_to_history(self, command: str, exit_code: int, output: str, skipped: bool = False) -> None:
         """Add an execution record to history."""

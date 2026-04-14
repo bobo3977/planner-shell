@@ -40,6 +40,11 @@ class ExecutionBackend(ABC):
         pass
 
     @abstractmethod
+    def interrupt(self) -> None:
+        """Interrupt the currently running command."""
+        pass
+
+    @abstractmethod
     def cleanup(self) -> None:
         """Cleanup resources."""
         pass
@@ -64,6 +69,11 @@ class HostBackend(ExecutionBackend):
             raise RuntimeError("Backend not initialized")
         return self.shell.execute(command, timeout=timeout, has_progress=has_progress, silent=silent)
 
+    def interrupt(self) -> None:
+        """Interrupt current command on host."""
+        if self.shell:
+            self.shell.interrupt()
+
     def cleanup(self) -> None:
         """Cleanup host resources."""
         if self.shell is not None:
@@ -84,6 +94,7 @@ class ContainerBackend(ExecutionBackend):
         self.image_name = None
         self.base_image = None
         self.shell = None
+        self.current_process: Optional[subprocess.Popen] = None
 
     def _check_runtime_available(self) -> bool:
         """Check if the container runtime is available."""
@@ -190,6 +201,7 @@ class ContainerBackend(ExecutionBackend):
                 bufsize=1,  # Line buffered
                 universal_newlines=True
             )
+            self.current_process = process
             
             # Collect output while streaming to stdout in real-time
             stdout_lines = []
@@ -219,7 +231,12 @@ class ContainerBackend(ExecutionBackend):
             
             # Wait for process to complete and get return code
             return_code = process.wait()
+            self.current_process = None
             
+            # Remap interrupt exit codes to 0 for consistent agent behavior
+            if return_code in (130, 131):
+                return_code = 0
+                
             return return_code, ''.join(stdout_lines) + ''.join(stderr_lines)
         except subprocess.TimeoutExpired:
             # Kill the process if it times out
@@ -249,6 +266,16 @@ class ContainerBackend(ExecutionBackend):
         
         return self._execute_in_container(command)
 
+    def interrupt(self) -> None:
+        """Signal the running container process to stop."""
+        if self.current_process and self.current_process.poll() is None:
+            try:
+                # Send SIGINT to the container exec process
+                # Note: sudo may require SIGKILL if it doesn't forward SIGINT
+                self.current_process.send_signal(signal.SIGINT)
+            except Exception:
+                pass
+
     def get_os_info(self) -> str:
         """Get OS information from inside the container."""
         if self.container_id is None:
@@ -272,6 +299,11 @@ class ContainerBackend(ExecutionBackend):
 
     def cleanup(self) -> None:
         """Cleanup container."""
+        if self.current_process and self.current_process.poll() is None:
+            try:
+                self.current_process.kill()
+            except:
+                pass
         if self.container_id is not None:
             try:
                 subprocess.run(
@@ -281,6 +313,7 @@ class ContainerBackend(ExecutionBackend):
                 )
             except Exception:
                 pass
+            self.container_id = None
 
 
 class DockerBackend(ContainerBackend):

@@ -21,6 +21,10 @@ class FinishExecutionException(Exception):
     """Raised when the user requests to finish the plan execution early (success)."""
 
 
+class AbortExecutionException(Exception):
+    """Raised when the execution is aborted via double Ctrl+C to kill zombie threads."""
+
+
 # ══════════════════════════════════════════════════════════════════
 # Execution log — records every command attempted during a run
 # ══════════════════════════════════════════════════════════════════

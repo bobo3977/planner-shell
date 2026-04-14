@@ -21,6 +21,16 @@ class PersistentShell:
     """Maintains a persistent bash process via PTY so cd/export state persists."""
 
     def __init__(self) -> None:
+        self.process = None
+        self.master_fd = None
+        self.slave_fd = None
+        self.initialize()
+
+    def initialize(self) -> None:
+        """Initialize or restart the persistent bash shell."""
+        if self.process:
+            self.close()
+
         self.master_fd, self.slave_fd = os.openpty()
 
         self.process = os.fork()
@@ -31,27 +41,30 @@ class PersistentShell:
             os.dup2(self.slave_fd, 0)
             os.dup2(self.slave_fd, 1)
             os.dup2(self.slave_fd, 2)
-            os.execvp('/bin/bash', ['/bin/bash', '--noediting'])
-            # If exec fails
+            # Start bash in clean mode to avoid loading .bashrc/.profile which print banners
+            os.execvp('/bin/bash', ['/bin/bash', '--norc', '--noprofile', '--noediting'])
             os._exit(1)
 
         # Parent process
         os.close(self.slave_fd)
+        self.slave_fd = None
         self._set_pty_echo(False)
 
         try:
+            # Set up the shell environment silently
             os.write(self.master_fd,
                      b"export PS1=''\nexport PS2=''\nexport PROMPT_COMMAND=''\n"
                      b"export SYSTEMD_PAGER=cat\nexport PAGER=cat\n"
                      b"export LESS=-F\nstty -echo\n")
-            time.sleep(0.5)
+            # Wait briefly and drain the initial PTY buffer
+            time.sleep(0.2)
+            self._flush_output(timeout=0.1)
         except OSError:
             pass
 
-        self._flush_output()
         self.forward_stdin = True
+        self.abort_event: Optional[threading.Event] = None
         # Command execution history for back functionality
-        # Each entry: (command, exit_code, output, skipped)
         self.command_history: list[tuple[str, int, str, bool]] = []
 
     def add_to_history(self, command: str, exit_code: int, output: str, skipped: bool = False) -> None:
@@ -86,10 +99,20 @@ class PersistentShell:
             except OSError:
                 break
 
+    def interrupt(self) -> None:
+        """Send SIGINT (Ctrl+C) to the shell process."""
+        if self.master_fd >= 0:
+            try:
+                os.write(self.master_fd, b'\x03')
+            except OSError:
+                pass
+
     # ── public interface ──────────────────────────────────────────
 
     def execute(self, command: str, timeout: int = 600, has_progress: bool = False, silent: bool = False) -> Tuple[int, str]:
         """Execute *command* and return (exit_code, output)."""
+        if self.abort_event and self.abort_event.is_set():
+             return 1, "Execution aborted by user."
         # Check if child process has exited using waitpid with WNOHANG
         try:
             pid, status = os.waitpid(self.process, os.WNOHANG)

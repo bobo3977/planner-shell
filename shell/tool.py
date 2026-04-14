@@ -13,7 +13,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 from langchain_core.tools import BaseTool
 
-from common_types import ExecutionStep, FinishExecutionException, QuitExecutionException
+from common_types import ExecutionStep, FinishExecutionException, QuitExecutionException, AbortExecutionException
 from config import MAX_CONSECUTIVE_FAILURES as CONFIG_MAX_CONSECUTIVE_FAILURES
 
 
@@ -62,6 +62,10 @@ class PersistentShellTool(BaseTool):
         start_spinner(message)
 
     def _run(self, command: str) -> str:
+        # Check for immediate abort
+        if self.shell.abort_event and self.shell.abort_event.is_set():
+            raise AbortExecutionException("Execution aborted by user.")
+
         # Stop any active spinner (Agent is thinking... or Executing plan...)
         from utils.spinner import stop_spinner
         stop_spinner()
@@ -101,12 +105,15 @@ class PersistentShellTool(BaseTool):
                 try:
                     from utils.terminal import safe_prompt
                     choice = safe_prompt(
-                        "\nExecute this?[Y/n/edit/back/skip/finish/quit] (default: Y): ",
-                        default='y'
+                        "\nExecute this?[Y/y!/n/edit/back/skip/finish/quit] (default: Y): ",
+                        default='y',
+                        abort_event=self.shell.abort_event
                     ).strip().lower()
                 except KeyboardInterrupt:
                     from utils.terminal import restore_terminal
                     restore_terminal()
+                    if self.shell.abort_event and self.shell.abort_event.is_set():
+                        raise AbortExecutionException("Execution aborted by user.")
                     print("\n\n[!] Interrupted. Returning to prompt...")
                     continue
                 except OSError:
@@ -407,6 +414,8 @@ class VerifyStateTool(BaseTool):
     shell: Any = Field(exclude=True)  # PersistentShell instance
 
     def _run(self, command: str) -> str:
+        if self.shell.abort_event and self.shell.abort_event.is_set():
+            raise AbortExecutionException("Execution aborted by user.")
         print(f"\n🔍 [State Verification] Running: {command.strip()}", flush=True)
         # Disable stdin forwarding for silent background execution
         original_forward = self.shell.forward_stdin
@@ -495,6 +504,8 @@ class FileEditorTool(BaseTool):
         new_str: Optional[str] = None,
         use_sudo: bool = False,
     ) -> str:
+        if self.shell.abort_event and self.shell.abort_event.is_set():
+            raise AbortExecutionException("Execution aborted by user.")
         action = action.strip().lower()
         VALID_ACTIONS = ("read", "write", "append", "str_replace")
         if action not in VALID_ACTIONS:
@@ -538,11 +549,14 @@ class FileEditorTool(BaseTool):
                 try:
                     from utils.terminal import safe_prompt
                     choice = safe_prompt(
-                        "\nExecute this file edit?[Y/n/skip/quit] (default: Y): ",
-                        default="y"
+                        "\nExecute this file edit?[Y/y!/n/skip/quit] (default: Y): ",
+                        default="y",
+                        abort_event=self.shell.abort_event
                     ).strip().lower()
                 except KeyboardInterrupt:
                     restore_terminal()
+                    if self.shell.abort_event and self.shell.abort_event.is_set():
+                        raise AbortExecutionException("Execution aborted by user.")
                     print("\n\n[!] Interrupted. Returning to prompt...")
                     continue
 

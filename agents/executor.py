@@ -101,6 +101,9 @@ class ExecutorAgent:
 
         print("\n⏳ Executing plan (real-time monitoring)...")
         from utils.spinner import spinning
+        if self._tavily_available and self._tavily:
+            self._tavily.abort_event = None # Reset
+            
         try:
             with spinning("Executing plan..."):
                 result = _run_agent_in_thread(
@@ -110,6 +113,9 @@ class ExecutorAgent:
                     shell=self.shell,
                     timeout=float(EXECUTE_TIMEOUT),
                 )
+                # After start, the shell.abort_event is populated.
+                if self._tavily_available and self._tavily:
+                    self._tavily.abort_event = getattr(self.shell, 'abort_event', None)
         except FinishExecutionException:
             # Propagate early finish signal
             raise

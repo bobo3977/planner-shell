@@ -9,13 +9,13 @@ from langchain_core.messages import SystemMessage, HumanMessage
 import os
 import subprocess
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 
 import config
 from config import load_prompt
 from pydantic import Field
 
-from common_types import ExecutionStep
+from common_types import ExecutionStep, AbortExecutionException
 from utils.security import _check_injection, _wrap_external_content
 from utils.threads import _run_agent_in_thread
 from utils.terminal import safe_prompt
@@ -42,15 +42,17 @@ except ImportError:
 class TavilySearchWithIndicator(TavilySearch):
     """TavilySearch with a visual indicator and a per-execution search cap."""
 
-    # Counts searches since the last successful shell command.
-    # Reset by PersistentShellTool whenever a command succeeds.
+    # counts searches since the last successful shell command.
     search_count: int = Field(default=0, exclude=True)
     MAX_SEARCHES_PER_COMMAND: int = Field(default=config.MAX_SEARCHES_PER_COMMAND, exclude=True)
+    abort_event: Optional[Any] = Field(default=None, exclude=True)
 
     def reset_search_count(self) -> None:
         self.search_count = 0
 
     def _run(self, query: str, **kwargs) -> str:
+        if self.abort_event and self.abort_event.is_set():
+            raise AbortExecutionException("Execution aborted by user.")
         self.search_count += 1
         if self.search_count > self.MAX_SEARCHES_PER_COMMAND:
             msg = (
@@ -73,6 +75,9 @@ class TavilySearchWithIndicator(TavilySearch):
             result = __import__('json').dumps(result, ensure_ascii=False)
         print("✅ Search completed")
         return result
+
+
+TavilySearchWithIndicator.model_rebuild()
 
 
 class PlannerAgent:
@@ -373,14 +378,25 @@ class PlannerAgent:
         print("\n⏳ Generating plan (may take a while)...")
 
         timeout_value = config.PLAN_TIMEOUT if timeout is None else timeout
+        null_shell = _NullShell()
+        if self._tavily:
+            # We'll set this inside the worker thread start logic or just before
+            # but since we create the shell here, we can't easily wait.
+            # Actually _run_agent_in_thread sets shell.abort_event.
+            # We'll make Tavily tool check the null_shell directly if we pass it.
+            self._tavily.abort_event = None # Reset
+            
         with spinning("Generating plan..."):
             result = _run_agent_in_thread(
                 executable,
                 input_dict=input_data,
                 session_id="planner_session",
-                shell=_NullShell(),
+                shell=null_shell,
                 timeout=float(timeout_value),
             )
+            # After start, the null_shell.abort_event is populated.
+            if self._tavily:
+                self._tavily.abort_event = null_shell.abort_event
 
         plan = extract_agent_output(result) if result is not None else ""
 
@@ -506,12 +522,13 @@ class PlannerAgent:
             self.llm, [], system_prompt  # no tools — pure reasoning task
         )
         timeout_value = config.PLAN_TIMEOUT if timeout is None else timeout
+        null_shell = _NullShell()
         with spinning("Distilling plan..."):
             result = _run_agent_in_thread(
                 agent_with_history,
                 input_dict={"input": "Produce the distilled plan now."},
                 session_id="distill_session",
-                shell=_NullShell(),
+                shell=null_shell,
                 timeout=float(timeout_value),
             )
         distilled = extract_agent_output(result) if result is not None else ""
@@ -524,3 +541,10 @@ class _NullShell:
     """Placeholder shell passed to _run_agent_in_thread for the planner,
     which does not execute shell commands and never needs PTY forwarding."""
     master_fd: int = -1
+    abort_event: Optional[Any] = None
+
+    def interrupt(self) -> None:
+        pass
+
+    def close(self) -> None:
+        pass

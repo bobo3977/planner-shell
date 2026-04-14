@@ -46,10 +46,11 @@ def cleanup_all_threads() -> None:
 # Custom SIGINT handler  ← core Ctrl+C fix for Python 3.12+
 # ══════════════════════════════════════════════════════════════════
 
-# Global reference to the shell for SIGINT forwarding
+# Global reference for session-specific signals
 _sigint_shell: Optional[Any] = None  # Forward reference to PersistentShell
 _sigint_hit_count: int = 0
 _sigint_last_time: float = 0.0
+_active_abort_event: Optional[threading.Event] = None
 
 
 def _sigint_pty_forward(signum, frame) -> None:
@@ -69,7 +70,17 @@ def _sigint_pty_forward(signum, frame) -> None:
     Single Ctrl+C  → \\x03 to PTY (interrupt current command, plan continues).
     Double Ctrl+C  → restore default handler + raise KeyboardInterrupt (abort).
     """
+def _sigint_pty_forward(signum, frame) -> None:
+    """Forward SIGINT (Ctrl+C) to the backend shell."""
     global _sigint_hit_count, _sigint_last_time
+    
+    # Stop any active spinner immediately to provide visual feedback
+    try:
+        from utils.spinner import stop_spinner
+        stop_spinner()
+    except ImportError:
+        pass
+        
     now = time.time()
     if now - _sigint_last_time < 2.0:
         _sigint_hit_count += 1
@@ -81,14 +92,15 @@ def _sigint_pty_forward(signum, frame) -> None:
         signal.signal(signal.SIGINT, signal.default_int_handler)
         _sigint_hit_count = 0
         print("\n[!] Ctrl+C pressed twice — aborting.")
+        if _active_abort_event:
+            _active_abort_event.set()
         raise KeyboardInterrupt
 
     print("\n[!] Ctrl+C: interrupting current command... (press again within 2s to abort)")
-    if _sigint_shell is not None and _sigint_shell.master_fd >= 0:
+    if _sigint_shell is not None:
         try:
-            import os
-            os.write(_sigint_shell.master_fd, b'\x03')
-        except OSError:
+            _sigint_shell.interrupt()
+        except (AttributeError, OSError):
             pass
 
 
@@ -128,9 +140,15 @@ def _run_agent_in_thread(
     thread = threading.Thread(target=_target, name=f"Agent-{uuid.uuid4().hex[:8]}")
     thread.daemon = True
 
-    global _sigint_shell, _sigint_hit_count
+    global _sigint_shell, _sigint_hit_count, _active_abort_event
     _sigint_shell = shell
     _sigint_hit_count = 0
+    # Create a FRESH event for this session so we don't 'un-abort' zombie threads
+    _active_abort_event = threading.Event()
+    # Attach it to the shell so tools can find it
+    if hasattr(shell, 'abort_event'):
+        shell.abort_event = _active_abort_event
+    
     old_handler = signal.signal(signal.SIGINT, _sigint_pty_forward)
 
     thread.start()
@@ -140,28 +158,50 @@ def _run_agent_in_thread(
     except KeyboardInterrupt:
         # Double Ctrl+C — abort execution
         print("\n\n[!] Aborting execution...")
-        # Try to kill the shell process if it exists (PersistentShell only)
-        if _sigint_shell is not None and hasattr(_sigint_shell, 'process') and _sigint_shell.process > 0:
-            try:
-                import signal as _sig
-                os.kill(_sigint_shell.process, _sig.SIGKILL)
-            except OSError:
-                pass
-        # Wait for worker thread to finish (with short timeouts to remain responsive)
+        if _active_abort_event:
+            _active_abort_event.set()
+        
+        # Stop spinner immediately in the main thread
+        try:
+            from utils.spinner import stop_spinner
+            stop_spinner()
+        except ImportError:
+            pass
+
+        # Give the worker thread a tiny window to catch the event and exit cleanly
         import time as _time
-        end_time = _time.time() + 5.0  # Wait up to 5 seconds for thread to finish
+        _time.sleep(0.1)
+        
+        # Interrupt current command across any backend
+        if _sigint_shell is not None:
+            try:
+                _sigint_shell.interrupt()
+            except Exception:
+                pass
+        
+        # Force kill the shell process/container if we're aborting completely
+        if _sigint_shell is not None:
+            try:
+                _sigint_shell.close()
+            except Exception:
+                pass
+        
+        # Wait for worker thread to finish (with short timeouts to remain responsive)
+        end_time = _time.time() + 3.0  # Wait up to 3 seconds for thread to finish
         while thread.is_alive() and _time.time() < end_time:
             try:
-                thread.join(timeout=0.5)
+                thread.join(timeout=0.2)
             except KeyboardInterrupt:
                 # User pressed Ctrl+C again during wait — just continue waiting
                 pass
+        
         if thread.is_alive():
             print("[!] Worker thread did not exit cleanly; it will be terminated when the program exits.")
         raise
     finally:
         signal.signal(signal.SIGINT, old_handler)
         _sigint_shell = None
+        # Do not clear _active_abort_event here; worker threads might still need to check it
         unregister_thread(thread)
 
     if thread.is_alive():

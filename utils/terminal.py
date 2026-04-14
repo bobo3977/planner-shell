@@ -48,29 +48,48 @@ def restore_terminal() -> None:
 
 def init_auto_approve_mode() -> None:
     """Initialize AUTO_APPROVE_MODE based on configuration."""
-    global AUTO_APPROVE_MODE
-    AUTO_APPROVE_MODE = AUTO_APPROVE
+    set_auto_approve_mode(AUTO_APPROVE)
     if AUTO_APPROVE_MODE:
         print("🤖 Auto-approve mode ENABLED (AUTO_APPROVE=1)")
 
 
-def safe_prompt(message: str, default: str | None = None) -> str:
+def set_auto_approve_mode(enabled: bool) -> None:
+    """Explicitly enable or disable auto-approve mode."""
+    global AUTO_APPROVE_MODE
+    AUTO_APPROVE_MODE = enabled
+    if enabled:
+        print(f"\n{BOLD}🤖 Auto-approve mode ENABLED for the remainder of this session.{RESET}")
+
+
+def safe_prompt(message: str, default: str | None = None, auto_approve: bool = True, abort_event: Optional[Any] = None) -> str:
     """Prompt for input, or return 'y' automatically in AUTO_APPROVE_MODE.
     
+    If abort_event is provided and set, raises AbortExecutionException.
     If PLANNER_SHELL_TEST is set, returns 'default' if it's not None, otherwise 'n'.
     Handles EOFError for piped/redirected input.
     """
-    if AUTO_APPROVE_MODE:
+    if abort_event and abort_event.is_set():
+        from common_types import AbortExecutionException
+        raise AbortExecutionException("Execution aborted by user.")
+
+    if AUTO_APPROVE_MODE and auto_approve:
         return 'y'
     # For testing: if PLANNER_SHELL_TEST env var is set, use provided default or 'n'
     if os.getenv("PLANNER_SHELL_TEST") == "1":
         return default if default is not None else 'n'
     try:
-        return input(message)
+        user_input = input(message)
+        if user_input.strip().lower() == 'y!':
+            set_auto_approve_mode(True)
+            return 'y'
+        return user_input
     except (KeyboardInterrupt, EOFError) as e:
         # Handle Ctrl+C and EOF (piped input) gracefully
         if isinstance(e, KeyboardInterrupt):
             restore_terminal()
+            if abort_event and abort_event.is_set():
+                from common_types import AbortExecutionException
+                raise AbortExecutionException("Execution aborted by user.")
             print("\n\n[!] Interrupted by user.")
             raise
         # For EOFError (piped input), return default or 'n' for consistency with test mode

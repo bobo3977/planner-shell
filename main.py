@@ -53,7 +53,6 @@ from agents.auditor import AuditorAgent
 # Global state
 # ══════════════════════════════════════════════════════════════════
 
-AUTO_APPROVE_MODE: bool = False
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -385,14 +384,32 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
                 print("  • Type 'quit' or 'q' to exit")
                 print("=" * 60)
 
+                # ── Re-initialize backend if it was closed (e.g. after abort/double Ctrl+C) ──
+                if hasattr(persistent_shell, 'backend') and persistent_shell.backend.container_id is None:
+                    print("\n" + "=" * 60)
+                    print("🔧 Connection lost. Re-initializing execution backend...")
+                    print("-" * 60)
+                    try:
+                        persistent_shell.backend.initialize()
+                        print("✅ Backend re-initialized successfully.")
+                    except Exception as e:
+                        print(f"❌ Failed to re-initialize backend: {e}")
+                        # Keep going, we'll try again next loop or handle the error then
+                elif hasattr(persistent_shell, 'process') and (persistent_shell.process is None or persistent_shell.process <= 0):
+                    # For host mode, PersistentShell.restart() handles initialization
+                    print("\n🔧 Restarting host shell session...")
+                    persistent_shell.restart()
+
                 if initial_input is not None:
                     user_input = initial_input
                     initial_input = None
                 else:
-                    user_input = safe_prompt(f"\n{BOLD}{CYAN}🤖 Enter your task ('q' to quit):{RESET} ").strip()
+                    user_input = safe_prompt(f"\n{BOLD}{CYAN}🤖 Enter your task ('q' to quit):{RESET} ", auto_approve=False).strip()
                 if user_input.lower() in ('quit', 'q'):
                     print("\n👋 Exiting. Closing shell session.")
-                    break
+                    persistent_shell.close()
+                    # Use os._exit to bypass slow/broken threading shutdown and avoid tracebacks
+                    os._exit(0)
                 if not user_input.strip():
                     continue
 
@@ -459,7 +476,7 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
                     print("-" * 60)
 
                     confirm_refine = safe_prompt(
-                        "\n🤖 Generate distilled plan now? [Y/n/q]: "
+                        "\n🤖 Generate distilled plan now? [Y/y!/n/q]: "
                     ).strip().lower()
                     if confirm_refine in ('n', 'no'):
                         print("Cancelled.")
@@ -499,7 +516,7 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
 
                     # Ask user if they want to save
                     save_choice = safe_prompt(
-                        "\n💾 Save distilled plan to cache? [Y/n/edit/q]: "
+                        "\n💾 Save distilled plan to cache? [Y/y!/n/edit/q]: "
                     ).strip().lower()
 
                     if save_choice in ('e', 'edit'):
@@ -578,7 +595,7 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
                             else:
                                 print(f"\n⏭️  {_list_offset + 1}-{_list_offset + len(plans)}. 'more' next, 'e<N>' edit, 'd<N>' delete, 'r<N>' run, other=exit")
                                 try:
-                                    choice = safe_prompt("→ ").strip().lower()
+                                    choice = safe_prompt("→ ", auto_approve=False).strip().lower()
                                     if choice in ('more', 'm'):
                                         _list_offset += _list_page_size
                                         continue
@@ -639,7 +656,7 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
                                                 print("=" * 60)
                                                 
                                                 # Ask whether to save
-                                                save_edited = safe_prompt("\n💾 Save edited plan to cache? [Y/n/q]: ").strip().lower()
+                                                save_edited = safe_prompt("\n💾 Save edited plan to cache? [Y/y!/n/q]: ").strip().lower()
                                                 if save_edited in ('q', 'quit'):
                                                     print("↩️  Returning to list view.")
                                                     _has_more = False
@@ -706,7 +723,7 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
                                             
                                             while True:
                                                 # Confirm execution
-                                                run_confirm = safe_prompt("\n✅ Execute this plan? [Y/n/edit/q]: ").strip().lower()
+                                                run_confirm = safe_prompt("\n✅ Execute this plan? [Y/y!/n/edit/q]: ").strip().lower()
                                                 if run_confirm in ('q', 'quit'):
                                                     print("↩️  Returning to list view.")
                                                     _has_more = False
@@ -734,7 +751,7 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
                                                         print("=" * 60)
                                                         
                                                         # Ask whether to save
-                                                        save_edited = safe_prompt("\n💾 Save edited plan to cache? [Y/n/q]: ").strip().lower()
+                                                        save_edited = safe_prompt("\n💾 Save edited plan to cache? [Y/y!/n/q]: ").strip().lower()
                                                         if save_edited in ('q', 'quit'):
                                                             print("↩️  Returning to list view.")
                                                             _has_more = False
@@ -907,7 +924,7 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
 
                             while True:
                                 # Confirm execution
-                                run_confirm = safe_prompt("\n✅ Execute this plan? [Y/n/edit/q]: ").strip().lower()
+                                run_confirm = safe_prompt("\n✅ Execute this plan? [Y/y!/n/edit/q]: ").strip().lower()
                                 if run_confirm in ('q', 'quit'):
                                     print("↩️  Returning to task prompt.")
                                     break
@@ -932,7 +949,7 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
                                         print("=" * 60)
                                         
                                         # Ask whether to save
-                                        save_edited = safe_prompt("\n💾 Save edited plan to cache? [Y/n/q]: ").strip().lower()
+                                        save_edited = safe_prompt("\n💾 Save edited plan to cache? [Y/y!/n/q]: ").strip().lower()
                                         if save_edited in ('q', 'quit'):
                                             print("↩️  Returning to task prompt.")
                                             run_plan = None
@@ -1062,7 +1079,7 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
                             print("=" * 60)
                             
                             # Ask whether to save
-                            save_edited = safe_prompt("\n💾 Save edited plan to cache? [Y/n/q]: ").strip().lower()
+                            save_edited = safe_prompt("\n💾 Save edited plan to cache? [Y/y!/n/q]: ").strip().lower()
                             if save_edited in ('q', 'quit'):
                                 print("↩️  Returning to task prompt.")
                                 continue
@@ -1219,7 +1236,7 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
                     # Ask user if they want to execute (and save) the plan
                     if not is_from_cache or plan_edited:
                         while True:
-                            save_confirm = safe_prompt("\n💾 Save this plan to cache? [Y/n/edit/q]: ").strip().lower()
+                            save_confirm = safe_prompt("\n💾 Save this plan to cache? [Y/y!/n/edit/q]: ").strip().lower()
                             if save_confirm in ('q', 'quit'):
                                 print("↩️  Returning to task prompt.")
                                 plan = None
@@ -1258,7 +1275,7 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
                                     print(plan)
                                     print("=" * 60)
                                     # Ask whether to save
-                                    save_edited = safe_prompt("\n💾 Save edited plan to cache? [Y/n/q]: ").strip().lower()
+                                    save_edited = safe_prompt("\n💾 Save edited plan to cache? [Y/y!/n/q]: ").strip().lower()
                                     if save_edited in ('q', 'quit'):
                                         print("↩️  Returning to task prompt.")
                                         plan = None
@@ -1299,7 +1316,7 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
                         break
 
                     while True:
-                        confirm = safe_prompt("\n✅ Execute this plan? [Y/n/edit/q/regen]: ").strip().lower()
+                        confirm = safe_prompt("\n✅ Execute this plan? [Y/y!/n/edit/q/regen]: ").strip().lower()
                         if confirm in ('q', 'quit'):
                             print("↩️  Returning to task prompt.")
                             break
@@ -1391,7 +1408,7 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
                                     break
                                 
                                 # Ask if user wants to save the edited plan to cache
-                                save_edited = safe_prompt("\n💾 Save edited plan to cache? [Y/n/q]: ").strip().lower()
+                                save_edited = safe_prompt("\n💾 Save edited plan to cache? [Y/y!/n/q]: ").strip().lower()
                                 if save_edited in ('q', 'quit'):
                                     print("↩️  Returning to task prompt.")
                                     plan = None
@@ -1515,7 +1532,14 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
                 continue
 
             except KeyboardInterrupt:
+                from utils.terminal import restore_terminal
                 restore_terminal()
+                # Stop spinner immediately
+                try:
+                    from utils.spinner import stop_spinner
+                    stop_spinner()
+                except ImportError:
+                    pass
                 print("\n\n[!] Interrupted by user. Returning to task prompt...")
                 continue
 
