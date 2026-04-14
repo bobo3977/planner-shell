@@ -148,7 +148,8 @@ SANDBOX_IMAGE=ubuntu:24.04
 Use a cached plan? [1-3 / n for new / q to cancel]: 
 ```
 - **URL/Markdown Modes**: Execute documented procedures from URLs or local markdown files (Tavily search disabled)
-- **Auto-Approval Mode**: Non-interactive operation for automation/CI via `AUTO_APPROVE=1`
+ - **Auto-Approval Mode**: Non-interactive operation for automation/CI via `AUTO_APPROVE=1`
+ - **`y!` trigger**: entering `y!` at a prompt enables auto‑approve mode for all subsequent prompts.
 - **Auto-Fix**: AI analyzes command failures and proposes corrections using Tavily search
 - **Security Auditing**: Automatic scanning of execution plans for dangerous commands (e.g., `rm -rf /`) before executing plans
 - **Autonomous Idempotency Check**: Optional state verification (`ENABLE_IDEMPOTENCY_CHECK=true`) that silently checks if a step's goal is already met, skipping redundant execution seamlessly.

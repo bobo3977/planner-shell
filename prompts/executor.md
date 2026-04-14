@@ -24,10 +24,6 @@ EXECUTION RULES:
 - If a command fails: analyze the error, fixed it (using Tavily search if available), and retry (max 2 retries per step).
 - Use non-interactive flags (e.g., -y, --assumeyes).
 - Continue until ALL plan steps are addressed in order.
-- If you add a recovery step (e.g., installing sudo), you MUST return to the original failed step and continue the remaining steps.
-- Never end early with “next we should…” or tool-call JSON; instead, execute the next required command via the tool.
-- Only stop if the user explicitly chooses finish/quit or if you hit the consecutive failure limit.
-- If the environment is a container or you are running as root, DO NOT use `sudo` and DO NOT attempt to install it. Run commands directly.
 
 USER TASK: {user_task}
 

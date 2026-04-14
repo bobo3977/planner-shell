@@ -144,6 +144,7 @@ class PersistentShellTool(BaseTool):
                         self.execution_log.append(
                             ExecutionStep(command=command, exit_code=0, output="Command skipped by user.")
                         )
+                    self._start_spinner("Agent is thinking...")
                     return ("Exit Code: 0\nSummary: Command skipped by user.\n\n"
                             "NOTE: This command was not executed. Proceeding to next step.")
                 else:
@@ -227,6 +228,7 @@ class PersistentShellTool(BaseTool):
                 )
                 # Reset history navigation when denying
                 self._history_position = -1
+                self._start_spinner("Agent is thinking...")
                 return (f"Execution DENIED by human. Reason/Feedback: {feedback}. "
                         "Adjust your approach based on this feedback.")
             print("Invalid choice. Please enter y, n, edit, back, skip, finish, or quit.")
@@ -261,6 +263,7 @@ class PersistentShellTool(BaseTool):
             from utils.terminal import restore_terminal
             restore_terminal()
             print("\n\n[!] Command interrupted. Proceeding to next step...")
+            self._start_spinner("Agent is thinking...")
             return "Exit Code: 0\nSummary: Command interrupted by user. Proceeding to next step."
 
         # Record this step in the execution log when logging is enabled
@@ -413,9 +416,22 @@ class VerifyStateTool(BaseTool):
     args_schema: type[BaseModel] = VerifyStateInput
     shell: Any = Field(exclude=True)  # PersistentShell instance
 
+    def _stop_spinner(self) -> None:
+        """Stop the background spinner thread if it is running and clear the line."""
+        from utils.spinner import stop_spinner
+        stop_spinner()
+
+    def _start_spinner(self, message: str = "Agent is thinking...") -> None:
+        """Start a background spinner that runs until _stop_spinner() is called."""
+        from utils.spinner import start_spinner
+        start_spinner(message)
+
     def _run(self, command: str) -> str:
         if self.shell.abort_event and self.shell.abort_event.is_set():
             raise AbortExecutionException("Execution aborted by user.")
+
+        # Stop any active spinner (Agent is thinking...)
+        self._stop_spinner()
         print(f"\n🔍 [State Verification] Running: {command.strip()}", flush=True)
         # Disable stdin forwarding for silent background execution
         original_forward = self.shell.forward_stdin
@@ -434,6 +450,8 @@ class VerifyStateTool(BaseTool):
             f"If Exit Code is 0, the state is satisfied. If you decide to skip the next plan step based on this, "
             f"you MUST output a message explaining it."
         )
+        # Start a background spinner that keeps running until the next command is proposed.
+        self._start_spinner("Agent is thinking...")
         return summary
 
 
@@ -495,6 +513,16 @@ class FileEditorTool(BaseTool):
     args_schema: type[BaseModel] = FileEditorInput
     shell: Any = Field(exclude=True)  # PersistentShell instance
 
+    def _stop_spinner(self) -> None:
+        """Stop the background spinner thread if it is running and clear the line."""
+        from utils.spinner import stop_spinner
+        stop_spinner()
+
+    def _start_spinner(self, message: str = "Agent is thinking...") -> None:
+        """Start a background spinner that runs until _stop_spinner() is called."""
+        from utils.spinner import start_spinner
+        start_spinner(message)
+
     def _run(
         self,
         action: str,
@@ -506,6 +534,10 @@ class FileEditorTool(BaseTool):
     ) -> str:
         if self.shell.abort_event and self.shell.abort_event.is_set():
             raise AbortExecutionException("Execution aborted by user.")
+        
+        # Stop any active spinner (Agent is thinking...)
+        self._stop_spinner()
+        
         action = action.strip().lower()
         VALID_ACTIONS = ("read", "write", "append", "str_replace")
         if action not in VALID_ACTIONS:
@@ -544,6 +576,7 @@ class FileEditorTool(BaseTool):
         from utils.terminal import restore_terminal
 
         self.shell.forward_stdin = False
+        choice = None
         try:
             while True:
                 try:
@@ -648,14 +681,22 @@ class FileEditorTool(BaseTool):
             exit_code, output = self.shell.execute(cmd, silent=True)
             if exit_code == 0:
                 print(f"✅ File edit applied: {action} → {resolved}")
-                return f"Success: '{action}' on '{resolved}' completed."
-            print(f"❌ File edit failed (exit {exit_code})")
-            err = output.strip()
-            if err:
-                print(err)
-            return (
-                f"Error: '{action}' on '{resolved}' failed (exit {exit_code}):\n{output}"
-            )
+                res = f"Success: '{action}' on '{resolved}' completed."
+            else:
+                print(f"❌ File edit failed (exit {exit_code})")
+                err = output.strip()
+                if err:
+                    print(err)
+                res = (
+                    f"Error: '{action}' on '{resolved}' failed (exit {exit_code}):\n{output}"
+                )
+            
+            # Start a background spinner that keeps running until the next command is proposed.
+            self._start_spinner("Agent is thinking...")
+            return res
         finally:
             restore_terminal()
             self.shell.forward_stdin = True
+            # Also handle success cases that return directly
+            if action == "read" or (choice is not None and choice in ("s", "skip", "n", "no")):
+                self._start_spinner("Agent is thinking...")

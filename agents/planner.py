@@ -21,7 +21,7 @@ from utils.threads import _run_agent_in_thread
 from utils.terminal import safe_prompt
 from llm.setup import _make_agent_with_history, extract_agent_output
 from cache.base import BasePlanCache
-from utils.spinner import spinning
+from utils.spinner import spinning, start_spinner, stop_spinner
 from agents.prompts.default import (
     URL_CONTENT_SECTION_TEMPLATE,
     MARKDOWN_CONTENT_SECTION_TEMPLATE,
@@ -63,6 +63,9 @@ class TavilySearchWithIndicator(TavilySearch):
             print(f"\n{msg}")
             return msg
 
+        # Stop any active spinner (Generating plan...)
+        stop_spinner()
+
         print("\n" + "=" * 60)
         print("🔍 Tavily Search:")
         print("-" * 60)
@@ -74,6 +77,8 @@ class TavilySearchWithIndicator(TavilySearch):
         if isinstance(result, dict):
             result = __import__('json').dumps(result, ensure_ascii=False)
         print("✅ Search completed")
+        # Restart the spinner for the next processing step
+        start_spinner("Generating plan...")
         return result
 
 
