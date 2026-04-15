@@ -208,8 +208,6 @@ DISABLE_EMBEDDINGS = get_bool("DISABLE_EMBEDDINGS", False)
 # Set to 1 to enable the Auditor Agent for security review of plans
 ENABLE_AUDITOR = get_bool("ENABLE_AUDITOR", True)
 
-# Set to 1 to enable autonomous state verification (idempotency check)
-ENABLE_IDEMPOTENCY_CHECK = get_bool("ENABLE_IDEMPOTENCY_CHECK", False)
 
 # Set to 1 to enable FileEditorTool for safe file read/write/append/str_replace
 ENABLE_FILE_EDITOR = get_bool("ENABLE_FILE_EDITOR", False)

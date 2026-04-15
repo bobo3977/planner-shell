@@ -27,6 +27,7 @@ def test_executor_with_mock_shell():
     
     # Create a mock shell that simulates successful command execution
     mock_shell = MagicMock(spec=PersistentShell)
+    mock_shell.abort_event = None
     mock_shell.execute.return_value = (0, "Command executed successfully")
     
     # Create a mock LLM
@@ -109,6 +110,7 @@ def test_executor_error_handling():
     # Initialize auto-approve mode to avoid interactive prompts
     
     mock_shell = MagicMock(spec=PersistentShell)
+    mock_shell.abort_event = None
     
     # Simulate mixed success/failure
     def mock_execute(command, timeout=600, has_progress=False):
@@ -196,6 +198,7 @@ def test_executor_with_tavily():
     # Initialize auto-approve mode to avoid interactive prompts
     
     mock_shell = MagicMock(spec=PersistentShell)
+    mock_shell.abort_event = None
     mock_shell.execute.return_value = (0, "Command executed")
     
     mock_llm = MagicMock()
@@ -241,6 +244,7 @@ def test_executor_plan_with_commands():
     # Initialize auto-approve mode to avoid interactive prompts
     
     mock_shell = MagicMock(spec=PersistentShell)
+    mock_shell.abort_event = None
     mock_shell.execute.return_value = (0, "Command executed successfully")
     
     mock_llm = MagicMock()
@@ -321,6 +325,7 @@ def test_executor_log_completeness():
     # Initialize auto-approve mode to avoid interactive prompts
     
     mock_shell = MagicMock(spec=PersistentShell)
+    mock_shell.abort_event = None
     
     # Return varied outputs and exit codes
     call_count = 0

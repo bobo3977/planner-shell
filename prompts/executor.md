@@ -18,7 +18,6 @@ TARGET SYSTEM: {os_info}
 
 EXECUTION RULES:
 - Extract commands from the plan (format: ## N. description\ncommand)
-{idempotency_rules}
 {file_editor_rule}
 - Wait for output before the next command.
 - If a command fails: analyze the error, fixed it (using Tavily search if available), and retry (max 2 retries per step).

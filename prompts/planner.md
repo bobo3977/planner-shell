@@ -58,15 +58,9 @@ CRITICAL RULES:
 8. ALWAYS use non-interactive flags (e.g., `-y` for apt, `--assumeyes` for dnf,
    `--noconfirm` for pacman) to prevent hanging
 9. Set DEBIAN_FRONTEND=noninteractive for Debian/Ubuntu when appropriate
-10. AVOID DUPLICATE COMMANDS: Do NOT include multiple commands that achieve the same goal. Each step must be unique and necessary. Do not include fallback or alternative commands for the same step.
-11. If a command appears in PAST SUCCESSFUL COMMANDS, DO NOT propose it again unless it is absolutely necessary for idempotency (e.g., running a service restart command multiple times is acceptable, but re-installing the same package is not).
-12. Do NOT add steps that only run `echo` or `printf` to print success messages, banners, or "deployment completed" style text. The user already sees shell output from real work. End the plan after the last substantive command. Use real verification (e.g. `curl`, `systemctl status`, `docker ps`) when you need to confirm state—not decorative echo.
-13. MANDATORY FIRST LINE: You MUST start the plan with a title in the format: `# [Software Name] [Instruction Type] on [OS Name]`. This line is required for the caching system to work correctly.
-14. If the target environment is a container or the user is root (common in Docker), DO NOT use `sudo`. Use direct commands instead.
 
 OUTPUT STRUCTURE:
 Line 1: Mandatory Title (format: `# [Software Name]... on [OS Name]`)
 Following lines: Numbered command list with explanations, with each command on its own line separate from the description, and a blank line between steps.
 
 Now, based on the user's task provided above, create a detailed execution plan.
-REMINDER: Start exactly with `# [Software] ... on [OS]`.

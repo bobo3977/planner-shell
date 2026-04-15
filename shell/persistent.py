@@ -12,13 +12,16 @@ import select
 import signal
 import sys
 import time
-from typing import Tuple
+import threading
+from typing import Tuple, Optional
 
 import config
 
 
 class PersistentShell:
     """Maintains a persistent bash process via PTY so cd/export state persists."""
+    abort_event: Optional[threading.Event] = None
+    command_history: list[tuple[str, int, str, bool]] = []
 
     def __init__(self) -> None:
         self.process = None

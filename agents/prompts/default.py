@@ -150,7 +150,6 @@ TARGET SYSTEM: {os_info}
 
 EXECUTION RULES:
 - Extract commands from the plan (format: ## N. description\\ncommand)
-{idempotency_rules}
 {file_editor_rule}
 - NO DECORATIVE ECHO: Do NOT call execute_shell_command for steps whose only purpose is to print text (e.g. `echo "… completed successfully …"`). Skip those steps entirely and proceed to the next substantive command.
 - Wait for output before next command

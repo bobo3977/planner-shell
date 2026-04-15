@@ -152,7 +152,6 @@ Use a cached plan? [1-3 / n for new / q to cancel]:
  - **`y!` trigger**: entering `y!` at a prompt enables auto‑approve mode for all subsequent prompts.
 - **Auto-Fix**: AI analyzes command failures and proposes corrections using Tavily search
 - **Security Auditing**: Automatic scanning of execution plans for dangerous commands (e.g., `rm -rf /`) before executing plans
-- **Autonomous Idempotency Check**: Optional state verification (`ENABLE_IDEMPOTENCY_CHECK=true`) that silently checks if a step's goal is already met, skipping redundant execution seamlessly.
 - **Plan Distillation**: After successful execution, you can extract a clean plan from the execution log
 - **Automatic Maintenance**: Automatic cleanup of expired cache entries
 - **Output Summarization**: Truncates long command output (head + tail) to limit LLM token usage
@@ -295,7 +294,7 @@ In this mode:
 - All commands are auto-approved (simulates pressing 'Y')
 - No interactive prompts
 - Ideal for automated testing or scheduled tasks
-- Still respects safety features (non-interactive flags, idempotency checks)
+- Still respects safety features (non-interactive flags)
 
 ### Ctrl+C Handling
 
@@ -483,8 +482,6 @@ AUTO_APPROVE=0  # set to 1 to enable
 # Enable/Disable Security Auditor module (default: 1)
 ENABLE_AUDITOR=1
 
-# Enable/Disable Autonomous Idempotency Check (default: 0)
-ENABLE_IDEMPOTENCY_CHECK=0
 ```
 
 #### Timeouts (seconds)

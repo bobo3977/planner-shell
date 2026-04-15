@@ -11,7 +11,7 @@ from common_types import ExecutionStep, FinishExecutionException
 from llm.setup import _make_agent_with_history, extract_agent_output
 from utils.threads import _run_agent_in_thread
 from shell.persistent import PersistentShell
-from shell.tool import PersistentShellTool, VerifyStateTool, FileEditorTool
+from shell.tool import PersistentShellTool, FileEditorTool
 
 
 class ExecutorAgent:
@@ -23,7 +23,6 @@ class ExecutorAgent:
         self.os_info = os_info
         self.is_sandbox = is_sandbox
         self._shell_tool = PersistentShellTool(shell=shell, is_sandbox=is_sandbox)
-        self._verify_tool = VerifyStateTool(shell=shell)
         self._file_editor_tool = FileEditorTool(shell=shell)
         # Initialize Tavily search tool if API key is available (for error recovery)
         import os
@@ -46,24 +45,14 @@ class ExecutorAgent:
         self._shell_tool._tavily_ref = self._tavily
 
     def execute_plan(self, plan: str, user_task: str) -> str:
-        print("\n🚀 Starting plan execution...")
-
-        # Build tools list: always include shell tool, conditionally include verification tool, optionally include Tavily
+        # Build tools list: always include shell tool, optionally include Tavily
         tools = [self._shell_tool]
         
-        from config import ENABLE_IDEMPOTENCY_CHECK, ENABLE_FILE_EDITOR
-        if ENABLE_IDEMPOTENCY_CHECK:
-            tools.append(self._verify_tool)
-            idempotency_rules = (
-                "- IDEMPOTENCY CHECK: Before executing the primary command for a step, use the `verify_state` tool exactly ONCE to run a silent, read-only check to see if the step's goal is already met.\n"
-                "- EXCEPTIONS: For unconditionally necessary operations like fetching remote updates (e.g., 'apt-get update', 'yum makecache'), DO NOT use verify_state. Proceed directly to execute_shell_command.\n"
-                "- If `verify_state` shows the goal is already met (returns Exit Code 0), you MUST IMMEDIATELY proceed to the NEXT step in the plan. DO NOT call `verify_state` again for the same step, and DO NOT call `execute_shell_command` for that step.\n"
-                "- If the goal is not met (returns non-zero), use `execute_shell_command(command='...')` to run the main command. This tool will ask the human for approval."
-            )
-            start_instruction = "Begin by verifying the state for the first step using verify_state."
-        else:
-            idempotency_rules = "- For EACH command, call execute_shell_command(command='...')"
-            start_instruction = "Call execute_shell_command for the first command."
+        print("\n🚀 Starting plan execution...")
+
+        from config import ENABLE_FILE_EDITOR
+        
+        start_instruction = "Call execute_shell_command for the first command."
 
         if ENABLE_FILE_EDITOR:
             tools.append(self._file_editor_tool)
@@ -89,7 +78,6 @@ class ExecutorAgent:
             os_info=self.os_info,
             user_task=user_task,
             plan=plan,
-            idempotency_rules=idempotency_rules,
             start_instruction=start_instruction,
             file_editor_rule=file_editor_rule,
         )

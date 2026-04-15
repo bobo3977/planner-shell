@@ -399,60 +399,6 @@ class PersistentShellTool(BaseTool):
         return f"{prefix}. Output:\n{summary}"
 
 
-class VerifyStateInput(BaseModel):
-    """Input schema for the verify_state tool."""
-    command: str = Field(description="The read-only bash command to execute to verify the state (e.g., 'dpkg -l | grep nginx', 'systemctl is-active redis').")
-
-
-class VerifyStateTool(BaseTool):
-    """Silently run a read-only command to check if a step's goal is already met."""
-    name: str = "verify_state"
-    description: str = (
-        "Silently execute a read-only bash command to check the current system state "
-        "(e.g., check if a package is installed, a file exists, or a service is running). "
-        "Returns the exit code and output. This command does NOT ask the user for permission, "
-        "so it MUST be strictly read-only and free of side-effects."
-    )
-    args_schema: type[BaseModel] = VerifyStateInput
-    shell: Any = Field(exclude=True)  # PersistentShell instance
-
-    def _stop_spinner(self) -> None:
-        """Stop the background spinner thread if it is running and clear the line."""
-        from utils.spinner import stop_spinner
-        stop_spinner()
-
-    def _start_spinner(self, message: str = "Agent is thinking...") -> None:
-        """Start a background spinner that runs until _stop_spinner() is called."""
-        from utils.spinner import start_spinner
-        start_spinner(message)
-
-    def _run(self, command: str) -> str:
-        if self.shell.abort_event and self.shell.abort_event.is_set():
-            raise AbortExecutionException("Execution aborted by user.")
-
-        # Stop any active spinner (Agent is thinking...)
-        self._stop_spinner()
-        print(f"\n🔍 [State Verification] Running: {command.strip()}", flush=True)
-        # Disable stdin forwarding for silent background execution
-        original_forward = self.shell.forward_stdin
-        self.shell.forward_stdin = False
-        try:
-            exit_code, output = self.shell.execute(command, silent=True)
-            if exit_code == 0:
-                print(f"✅ State verified (Exit 0): Condition already met.")
-            else:
-                print(f"❌ State pending (Exit {exit_code}).")
-        finally:
-            self.shell.forward_stdin = original_forward
-
-        summary = (
-            f"Exit Code: {exit_code}\nOutput:\n{output}\n\n"
-            f"If Exit Code is 0, the state is satisfied. If you decide to skip the next plan step based on this, "
-            f"you MUST output a message explaining it."
-        )
-        # Start a background spinner that keeps running until the next command is proposed.
-        self._start_spinner("Agent is thinking...")
-        return summary
 
 
 # ─────────────────────────────────────────────────────────────────────────────
