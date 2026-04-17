@@ -23,7 +23,8 @@ class ExecutorAgent:
         self.os_info = os_info
         self.is_sandbox = is_sandbox
         self._shell_tool = PersistentShellTool(shell=shell, is_sandbox=is_sandbox)
-        self._file_editor_tool = FileEditorTool(shell=shell)
+        self._file_editor_tool = FileEditorTool(shell=shell, is_sandbox=is_sandbox)
+
         # Initialize Tavily search tool if API key is available (for error recovery)
         import os
         tavily_key = os.getenv("TAVILY_API_KEY")

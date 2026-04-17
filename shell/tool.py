@@ -458,6 +458,8 @@ class FileEditorTool(BaseTool):
     )
     args_schema: type[BaseModel] = FileEditorInput
     shell: Any = Field(exclude=True)  # PersistentShell instance
+    is_sandbox: bool = Field(default=False)
+
 
     def _stop_spinner(self) -> None:
         """Stop the background spinner thread if it is running and clear the line."""
@@ -491,7 +493,8 @@ class FileEditorTool(BaseTool):
 
         # ── READ (no approval needed) ──────────────────────────────
         if action == "read":
-            prefix = "sudo " if use_sudo else ""
+            prefix = "" if self.is_sandbox else ("sudo " if use_sudo else "")
+
             path = os.path.normpath(os.path.expanduser(path.strip()))
             cmd = f"{prefix}cat {shlex.quote(path)}"
             exit_code, output = self.shell.execute(cmd, silent=True)
@@ -553,7 +556,9 @@ class FileEditorTool(BaseTool):
                 print("Invalid choice. Enter y, n, skip, or quit.")
 
             # ── Execute the file operation ─────────────────────────────
-            prefix = "sudo " if use_sudo else ""
+            # In sandbox mode, we typically run as root; avoid sudo prefix
+            prefix = "" if self.is_sandbox else ("sudo " if use_sudo else "")
+
             resolved = os.path.normpath(os.path.expanduser(path.strip()))
 
             def _write_or_append_cmd(target: str, body: str, append: bool) -> str:
