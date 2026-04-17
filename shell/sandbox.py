@@ -155,24 +155,32 @@ class ContainerBackend(ExecutionBackend):
                 shells_to_try.append('/bin/sh')  # Fallback
             
             for shell in shells_to_try:
+                run_cmd = [
+                    'sudo', self.runtime, 'run',
+                    '-d',  # detached
+                    '--rm',  # auto-remove
+                    '-i',  # stdin
+                    '-e', 'SYSTEMD_PAGER=cat',
+                    '-e', 'PAGER=cat',
+                    '-e', 'LESS=-F',
+                ]
+                
+                # Add port mappings if configured
+                for port_map in config.SANDBOX_PORTS:
+                    run_cmd.extend(['-p', port_map])
+                
+                run_cmd.extend([
+                    self.base_image,
+                    shell
+                ])
+
                 result = subprocess.run(
-                    [
-                        'sudo', self.runtime, 'run',
-                        '-d',  # detached
-                        '--rm',  # auto-remove
-                        '-i',  # stdin
-                        '-e', 'PS1=',
-                        '-e', 'PROMPT_COMMAND=',
-                        '-e', 'SYSTEMD_PAGER=cat',
-                        '-e', 'PAGER=cat',
-                        '-e', 'LESS=-F',
-                        self.base_image,
-                        shell
-                    ],
+                    run_cmd,
                     capture_output=True,
                     timeout=30,
                     text=True
                 )
+
                 if result.returncode == 0:
                     self.container_id = result.stdout.strip()
                     self.shell = shell  # Update to successful shell
@@ -194,7 +202,8 @@ class ContainerBackend(ExecutionBackend):
         try:
             # Use 'exec' to run command in existing container with real-time output
             process = subprocess.Popen(
-                ['sudo', self.runtime, 'exec', self.container_id, self.shell, '-c', command],
+                ['sudo', self.runtime, 'exec', '-e', 'PS1=', '-e', 'PROMPT_COMMAND=', self.container_id, self.shell, '-c', command],
+
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -284,8 +293,9 @@ class ContainerBackend(ExecutionBackend):
         try:
             # Try to get detailed OS info from container
             result = subprocess.run(
-                ['sudo', self.runtime, 'exec', self.container_id, self.shell, '-c',
+                ['sudo', self.runtime, 'exec', '-e', 'PS1=', '-e', 'PROMPT_COMMAND=', self.container_id, self.shell, '-c',
                  'uname -a && cat /etc/os-release 2>/dev/null || echo "OS info unavailable"'],
+
                 capture_output=True,
                 timeout=10,
                 text=True

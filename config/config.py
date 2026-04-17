@@ -225,6 +225,10 @@ SANDBOX_TYPE = os.getenv("SANDBOX_TYPE", "host").lower().strip()
 # Default: ubuntu:24.04 for Docker, docker.io/library/ubuntu:24.04 for Podman
 SANDBOX_IMAGE = os.getenv("SANDBOX_IMAGE", None)
 
+# List of port mappings for sandbox (e.g., ["8088:8088", "3000:3000"])
+SANDBOX_PORTS = os.getenv("SANDBOX_PORTS", "").split(",") if os.getenv("SANDBOX_PORTS") else []
+
+
 
 # ══════════════════════════════════════════════════════════════════
 # Auto-approve Mode

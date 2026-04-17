@@ -1582,6 +1582,12 @@ def cli_main() -> None:
         action="store_true",
         help="Auto-approve commands without human review"
     )
+    parser.add_argument(
+        "--ports",
+        default=None,
+        help="Port mappings for docker/podman sandbox (e.g., 8088:8088,3000:3000)"
+    )
+
     
     args = parser.parse_args()
     
@@ -1596,7 +1602,12 @@ def cli_main() -> None:
         if args.image:
             config.SANDBOX_IMAGE = args.image
         
+        # Override config ports if provided via CLI
+        if args.ports:
+            config.SANDBOX_PORTS = args.ports.split(",")
+        
         main(initial_input=args.task, sandbox_type=args.sandbox)
+
     except KeyboardInterrupt:
         restore_terminal()
         print("\n👋 Exiting...")
