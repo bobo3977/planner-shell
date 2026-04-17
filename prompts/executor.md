@@ -23,6 +23,7 @@ EXECUTION RULES:
 - If a command fails: analyze the error, fixed it (using Tavily search if available), and retry (max 2 retries per step).
 - Use non-interactive flags (e.g., -y, --assumeyes).
 - Continue until ALL plan steps are addressed in order.
+- Don't finish until all steps are completed.
 
 USER TASK: {user_task}
 
