@@ -190,6 +190,8 @@ def setup_llm():
             api_key="ollama", # placeholder
             model=config.OLLAMA_MODEL,
             temperature=config.LLM_TEMPERATURE,
+            timeout=config.LLM_REQUEST_TIMEOUT,
+            max_retries=1,
         )
     
     if provider == "vllm":
@@ -201,6 +203,8 @@ def setup_llm():
             model=config.VLLM_MODEL,
             base_url=config.VLLM_BASE_URL,
             temperature=config.LLM_TEMPERATURE,
+            timeout=config.LLM_REQUEST_TIMEOUT,
+            max_retries=1,
         )
 
     if provider == "openrouter":
@@ -213,6 +217,8 @@ def setup_llm():
             api_key=openrouter_key,
             base_url="https://openrouter.ai/api/v1",
             temperature=config.LLM_TEMPERATURE,
+            timeout=config.LLM_REQUEST_TIMEOUT,
+            max_retries=1,
         )
 
     if provider == "openai":
@@ -224,6 +230,8 @@ def setup_llm():
             model=config.OPENAI_MODEL,
             api_key=openai_key,
             temperature=config.LLM_TEMPERATURE,
+            timeout=config.LLM_REQUEST_TIMEOUT,
+            max_retries=1,
         )
 
     # --- 2. Auto-Discovery (Implicit) ---
@@ -234,6 +242,8 @@ def setup_llm():
             api_key=openrouter_key,
             base_url="https://openrouter.ai/api/v1",
             temperature=config.LLM_TEMPERATURE,
+            timeout=config.LLM_REQUEST_TIMEOUT,
+            max_retries=1,
         )
 
     if openai_key:
@@ -242,6 +252,8 @@ def setup_llm():
             model=config.OPENAI_MODEL,
             api_key=openai_key,
             temperature=config.LLM_TEMPERATURE,
+            timeout=config.LLM_REQUEST_TIMEOUT,
+            max_retries=1,
         )
 
     # Fallback to local Ollama if everything else fails
@@ -250,4 +262,6 @@ def setup_llm():
         base_url=config.OLLAMA_BASE_URL,
         model=config.OLLAMA_MODEL,
         temperature=config.LLM_TEMPERATURE,
+        timeout=config.LLM_REQUEST_TIMEOUT,
+        max_retries=1,
     )

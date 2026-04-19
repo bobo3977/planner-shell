@@ -164,6 +164,9 @@ VLLM_MODEL = os.getenv("VLLM_MODEL", None)
 # LLM temperature (0 = deterministic, higher = more creative)
 LLM_TEMPERATURE = get_float("LLM_TEMPERATURE", 0)
 
+# Timeout for individual LLM API requests in seconds (default: 120)
+LLM_REQUEST_TIMEOUT = get_float("LLM_REQUEST_TIMEOUT", 120.0)
+
 
 # ══════════════════════════════════════════════════════════════════
 # Embedding Configuration
