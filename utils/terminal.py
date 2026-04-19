@@ -48,17 +48,23 @@ def restore_terminal() -> None:
 
 def init_auto_approve_mode() -> None:
     """Initialize AUTO_APPROVE_MODE based on configuration."""
-    set_auto_approve_mode(AUTO_APPROVE)
+    set_auto_approve_mode(AUTO_APPROVE, silent=True)
     if AUTO_APPROVE_MODE:
-        print("🤖 Auto-approve mode ENABLED (AUTO_APPROVE=1)")
+        print(f"\n{BOLD}🤖 Auto-approve mode ENABLED (AUTO_APPROVE=1){RESET}")
 
 
-def set_auto_approve_mode(enabled: bool) -> None:
+def set_auto_approve_mode(enabled: bool, silent: bool = False) -> None:
     """Explicitly enable or disable auto-approve mode."""
     global AUTO_APPROVE_MODE
     AUTO_APPROVE_MODE = enabled
-    if enabled:
-        print(f"\n{BOLD}🤖 Auto-approve mode ENABLED for the remainder of this session.{RESET}")
+    if enabled and not silent:
+        print(f"\n{BOLD}🤖 Auto-approve mode ENABLED for the current task.{RESET}")
+
+
+def reset_auto_approve_mode() -> None:
+    """Reset auto-approve mode to its configured default state."""
+    global AUTO_APPROVE_MODE
+    AUTO_APPROVE_MODE = AUTO_APPROVE
 
 
 def safe_prompt(message: str, default: str | None = None, auto_approve: bool = True, abort_event: Optional[Any] = None) -> str:

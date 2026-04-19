@@ -39,7 +39,7 @@ from common_types import QuitExecutionException, FinishExecutionException, Execu
 from utils.threads import (
     cleanup_all_threads
 )
-from utils.terminal import restore_terminal, safe_prompt, init_auto_approve_mode, edit_in_vim, BOLD, CYAN, RESET
+from utils.terminal import restore_terminal, safe_prompt, init_auto_approve_mode, reset_auto_approve_mode, edit_in_vim, BOLD, CYAN, RESET
 from utils.io import read_markdown_file, fetch_url_content, extract_url_title
 from utils.os_info import get_detailed_os_info, is_url, is_markdown_file
 from shell.persistent import PersistentShell
@@ -378,6 +378,7 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
     try:
         while True:
             try:
+                reset_auto_approve_mode()
                 print("\n" + "=" * 60)
                 print("📋 Quick Guide:")
                 print("  • Enter a task description (e.g., 'Install Nginx')")
