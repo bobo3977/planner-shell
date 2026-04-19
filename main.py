@@ -322,7 +322,12 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
     else:
         os_info = get_detailed_os_info()
 
-    plan_cache = create_plan_cache()
+    try:
+        plan_cache = create_plan_cache()
+    except ValueError as e:
+        restore_terminal()
+        sys.exit(1)
+    
     print(f"💾 Plan cache initialized ({plan_cache.ttl_days}-day TTL)")
     print("\n🧹 Cleaning up expired plan cache entries...")
     deleted = plan_cache.cleanup_expired()
@@ -1532,7 +1537,6 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
                 continue
 
             except KeyboardInterrupt:
-                from utils.terminal import restore_terminal
                 restore_terminal()
                 # Stop spinner immediately
                 try:

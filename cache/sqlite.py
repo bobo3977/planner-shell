@@ -409,6 +409,30 @@ class SQLitePlanCache(BasePlanCache):
 
             conn.commit()
 
+            # Optional: Check for embedding dimension mismatch if table has data
+            try:
+                row = conn.execute(
+                    "SELECT embedding FROM plans WHERE embedding IS NOT NULL ORDER BY timestamp DESC LIMIT 1"
+                ).fetchone()
+                if row and row[0]:
+                    import config
+                    latest_emb = json.loads(row[0])
+                    if isinstance(latest_emb, list) and len(latest_emb) > 0:
+                        db_dim = len(latest_emb)
+                        if db_dim != config.EMBEDDING_DIMENSION:
+                            print(f"\n{'!'*70}")
+                            print(f"⚠️  WARNING: SQLite embedding dimension mismatch detected!")
+                            print(f"{'!'*70}")
+                            print(f"   Latest cached entry uses {db_dim} dimensions,")
+                            print(f"   but your current config uses {config.EMBEDDING_DIMENSION} dimensions.")
+                            print(f"   (This usually means you switched embedding providers.)")
+                            print(f"   Hybrid search results may be inaccurate.")
+                            print(f"   To fix this, either update .env or clear the cache: planner-shell clear-cache")
+                            print(f"{'!'*70}\n")
+            except Exception as e:
+                # Don't fail the whole app for a warning check
+                _logger.debug("SQLite dimension check error: %s", e)
+
     # ── Internal helpers ──────────────────────────────────────────
 
     def _valid_rows(self, conn: sqlite3.Connection) -> list[tuple]:

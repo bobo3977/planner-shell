@@ -125,17 +125,25 @@ class SingleStorePlanCache(BasePlanCache):
                         if row:
                             col_type = row[0]  # e.g., "vector(1536)"
                             import re as _re
-                            match = _re.search(r'vector\((\d+)\)', col_type, _re.IGNORECASE)
+                            # Match vector(dim) or vector(dim, TYPE)
+                            match = _re.search(r'vector\((\d+)(?:,\s*[A-Z0-9]+)?\)', col_type, _re.IGNORECASE)
                             if match:
                                 current_dim = int(match.group(1))
                                 if current_dim != config.EMBEDDING_DIMENSION:
-                                    print(f"\n❌ CRITICAL: SingleStore embedding dimension mismatch!")
+                                    print(f"\n{'='*70}")
+                                    print(f"❌ CRITICAL: SingleStore embedding dimension mismatch!")
+                                    print(f"{'='*70}")
                                     print(f"   Table '{self.table}' uses VECTOR({current_dim}), but your config requires VECTOR({config.EMBEDDING_DIMENSION}).")
                                     print(f"   (This happens when switching between OpenAI and Ollama/Local embeddings)")
-                                    print(f"   To fix this, either set EMBEDDING_DIMENSION={current_dim} in your .env,")
-                                    print(f"   or drop the table manually to allow the agent to recreate it: DROP TABLE {self.table};")
-                                    print()
+                                    print(f"   To fix this, either:")
+                                    print(f"   1. Update EMBEDDING_DIMENSION={current_dim} in your .env")
+                                    print(f"   2. OR drop the table manually: DROP TABLE {self.table};")
+                                    print(f"{'='*70}\n")
+                                    # We raise error because continuing will lead to SQL errors later
                                     raise ValueError(f"SingleStore dimension mismatch: {current_dim} vs {config.EMBEDDING_DIMENSION}")
+                            else:
+                                print(f"⚠️  Warning: Could not parse dimension from COLUMN_TYPE: {col_type}")
+                                print(f"   Check your '{self.table}' table manually to ensure it matches EMBEDDING_DIMENSION={config.EMBEDDING_DIMENSION}")
 
                 if not table_exists:
                     # Create plans table as COLUMNSTORE (required for vector and fulltext indexes)
@@ -386,7 +394,7 @@ class SingleStorePlanCache(BasePlanCache):
 
                 print("🔍 Hybrid Search:")
                 print(f"   BM25 Query: {fts_query}")
-                print("   Vector Search: Using embedding similarity (1536 dimensions)")
+                print(f"   Vector Search: Using embedding similarity ({config.EMBEDDING_DIMENSION} dimensions)")
 
                 cursor.execute(f"""
                     WITH scored_results AS (
