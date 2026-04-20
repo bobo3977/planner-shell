@@ -275,7 +275,7 @@ def main(initial_input: str = None, sandbox_type: str = None) -> None:
     
     Args:
         initial_input: Initial task to execute
-        sandbox_type: Execution backend ('host', 'docker', 'podman', 'firecracker')
+        sandbox_type: Execution backend ('host', 'docker', 'podman')
     """
     init_auto_approve_mode()
 
@@ -1573,7 +1573,7 @@ def cli_main() -> None:
     )
     parser.add_argument(
         "--sandbox",
-        choices=["host", "docker", "podman", "firecracker"],
+        choices=["host", "docker", "podman"],
         default=None,
         help="Execution backend (default: host). Use docker/podman for isolated execution."
     )

@@ -216,7 +216,7 @@ ENABLE_FILE_EDITOR = get_bool("ENABLE_FILE_EDITOR", False)
 # Sandbox/Container Configuration
 # ══════════════════════════════════════════════════════════════════
 
-# Sandbox backend: "host" (direct execution), "docker", "podman", or "firecracker"
+# Sandbox backend: "host" (direct execution), "docker" or "podman"
 # Default: "host" for backward compatibility with existing behavior
 SANDBOX_TYPE = os.getenv("SANDBOX_TYPE", "host").lower().strip()
 

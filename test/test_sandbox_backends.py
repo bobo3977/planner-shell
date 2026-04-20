@@ -45,13 +45,6 @@ def test_podman_backend_creation():
     assert backend.name == 'podman'
 
 
-def test_firecracker_backend_creation():
-    """Test creating a firecracker backend."""
-    from shell.sandbox import create_backend
-    
-    backend = create_backend('firecracker')
-    assert backend.name == 'firecracker'
-
 
 def test_invalid_backend():
     """Test that invalid backend raises error."""
@@ -126,7 +119,7 @@ def test_cli_argument_parsing():
     
     parser = argparse.ArgumentParser()
     parser.add_argument("task", nargs="?", default=None)
-    parser.add_argument("--sandbox", choices=["host", "docker", "podman", "firecracker"], default=None)
+    parser.add_argument("--sandbox", choices=["host", "docker", "podman"], default=None)
     parser.add_argument("--image", default=None)
     parser.add_argument("--auto-approve", action="store_true")
     

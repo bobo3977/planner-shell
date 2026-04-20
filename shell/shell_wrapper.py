@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Shell wrapper for non-host backends (Docker, Podman, Firecracker).
+Shell wrapper for non-host backends (Docker, Podman).
 
 Provides a PersistentShell-compatible interface for container backends.
 """
@@ -20,7 +20,7 @@ class ShellWrapper:
         """Initialize wrapper around execution backend.
         
         Args:
-            backend: ExecutionBackend instance (docker, podman, firecracker, etc.)
+            backend: ExecutionBackend instance (docker, podman, etc.)
         """
         self.backend = backend
         self.forward_stdin = True

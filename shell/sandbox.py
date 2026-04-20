@@ -6,7 +6,6 @@ This module provides multiple execution environments:
 - HostBackend: Direct execution on host (default, existing behavior)
 - DockerBackend: Docker container execution
 - PodmanBackend: Podman container execution
-- FirecrackerBackend: Firecracker MicroVM execution
 """
 
 from __future__ import annotations
@@ -342,70 +341,26 @@ class PodmanBackend(ContainerBackend):
         self.base_image = image or "docker.io/library/ubuntu:24.04"
 
 
-class FirecrackerBackend(ExecutionBackend):
-    """Firecracker MicroVM-based execution backend."""
-
-    def __init__(self) -> None:
-        super().__init__("firecracker")
-        self.vm_socket = None
-        self.kernel_path = None
-        self.rootfs_path = None
-
-    def _check_firecracker_available(self) -> bool:
-        """Check if Firecracker is available."""
-        try:
-            subprocess.run(
-                ['firecracker', '--version'],
-                capture_output=True,
-                timeout=5
-            )
-            return True
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            return False
-
-    def _prepare_vm_resources(self) -> bool:
-        """Prepare VM kernel and rootfs."""
-        # This is a placeholder for actual Firecracker setup
-        # Real implementation would need kernel and rootfs images
-        print("⚠️  Firecracker backend requires kernel and rootfs image setup")
-        print("   See: https://github.com/firecracker-microvm/firecracker/blob/main/docs/getting-started.md")
-        return False
-
-    def initialize(self) -> None:
-        """Initialize Firecracker backend."""
-        if not self._check_firecracker_available():
-            raise RuntimeError("Firecracker is not available on this system")
-        
-        if not self._prepare_vm_resources():
-            raise RuntimeError("Failed to prepare Firecracker resources")
-
-    def execute(self, command: str, timeout: int = 600, has_progress: bool = False, silent: bool = False) -> Tuple[int, str]:
-        """Execute command in MicroVM (not yet fully implemented)."""
-        raise NotImplementedError("Firecracker backend execution not yet implemented")
-
-    def cleanup(self) -> None:
-        """Cleanup VM resources."""
-        pass
 
 
 def create_backend(sandbox_type: str, **kwargs) -> ExecutionBackend:
-    """Factory function to create execution backend.
-    
+    """Factory function to create an execution backend.
+
     Args:
-        sandbox_type: One of 'host', 'docker', 'podman', 'firecracker'
-        **kwargs: Additional options for the backend
-    
+        sandbox_type: One of ``"host"``, ``"docker"`` or ``"podman"``.
+        **kwargs: Additional options for the backend (e.g., ``image`` for
+            container backends).
+
     Returns:
-        ExecutionBackend instance
-    
+        An instance of :class:`ExecutionBackend`.
+
     Raises:
-        ValueError: If sandbox_type is not recognized
+        ValueError: If ``sandbox_type`` is not recognized.
     """
     backends = {
         'host': HostBackend,
         'docker': DockerBackend,
         'podman': PodmanBackend,
-        'firecracker': FirecrackerBackend,
     }
     
     if sandbox_type not in backends:
@@ -419,7 +374,5 @@ def create_backend(sandbox_type: str, **kwargs) -> ExecutionBackend:
         backend = backend_class(image=kwargs.get('image'))
     elif sandbox_type == 'podman':
         backend = backend_class(image=kwargs.get('image'))
-    elif sandbox_type == 'firecracker':
-        backend = backend_class()
     
     return backend
