@@ -60,12 +60,7 @@ def _get_embedding(text: str, model: str = None) -> Optional[list[float]]:
         model = model or config.OLLAMA_EMBEDDING_MODEL
         payload = {"model": model, "prompt": text}
         is_ollama = True
-    elif provider == "vllm":
-        if not config.VLLM_BASE_URL:
-            return None
-        endpoint = f"{config.VLLM_BASE_URL.rstrip('/')}/embeddings"
-        model = model or config.VLLM_MODEL
-        payload = {"model": model, "input": text}
+
     elif provider == "openrouter":
         if not openrouter_key:
             return None

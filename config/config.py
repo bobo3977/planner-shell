@@ -149,17 +149,13 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5-nano")
 # OpenRouter model name (used when OPENROUTER_API_KEY is set)
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-5-nano")
 
-# LLM provider: "openai", "openrouter", "ollama", "vllm" (optional)
+# LLM provider: "openai", "openrouter", "ollama" (optional)
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", None)
 
 # Ollama settings
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
 OLLAMA_EMBEDDING_MODEL = os.getenv("OLLAMA_EMBEDDING_MODEL", "mxbai-embed-large")
-
-# vLLM settings
-VLLM_BASE_URL = os.getenv("VLLM_BASE_URL", None)
-VLLM_MODEL = os.getenv("VLLM_MODEL", None)
 
 # LLM temperature (0 = deterministic, higher = more creative)
 LLM_TEMPERATURE = get_float("LLM_TEMPERATURE", 0)

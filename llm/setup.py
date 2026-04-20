@@ -194,19 +194,6 @@ def setup_llm():
             max_retries=1,
         )
     
-    if provider == "vllm":
-        print(f"🤖 LLM Provider: vLLM ({config.VLLM_MODEL})")
-        if not config.VLLM_BASE_URL:
-            print("❌ Error: VLLM_BASE_URL is required when provider is set to vllm.")
-            sys.exit(1)
-        return InteractiveRetryChatOpenAI(
-            model=config.VLLM_MODEL,
-            base_url=config.VLLM_BASE_URL,
-            temperature=config.LLM_TEMPERATURE,
-            timeout=config.LLM_REQUEST_TIMEOUT,
-            max_retries=1,
-        )
-
     if provider == "openrouter":
         if not openrouter_key:
             print("❌ Error: OPENROUTER_API_KEY is required for OpenRouter provider.")
