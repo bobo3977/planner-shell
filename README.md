@@ -648,14 +648,15 @@ planner-shell/
 ├── prompts/             # System prompt templates (markdown files)
 ├── shell/               # Persistent PTY shell abstractions
 ├── utils/               # Shared utility modules
-├── test/                # Test suite (integration and unit tests)
 ├── scratch/             # Temporary working directory
 ├── main.py              # Application entry point
 ├── common_types.py      # Shared data models/types
 ├── setup.sh             # Installation and setup script
 ├── pyproject.toml       # Project metadata and dependencies
 ├── .env.example         # Environment variable template
-├── LICENSE              # Project license
+├── .env                 # Local secrets (user-created, not committed)
+├── .plan_cache.db       # Local SQLite cache (auto-created at runtime)
+├── uv.lock              # Dependency lock file
 └── README.md            # This file
 ```
 
